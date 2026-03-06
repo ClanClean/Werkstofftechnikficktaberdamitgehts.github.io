@@ -1,0 +1,70 @@
+/* Grundlegende Stile */
+body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Moderne Schriftart */
+    line-height: 1.7; /* Bessere Lesbarkeit durch Zeilenabstand */
+    color: #333; /* Dunkelgrau statt hartem Schwarz */
+    background-color: #f9f9f9; /* Sehr helles Grau für den Hintergrund */
+    margin: 0;
+    padding: 20px;
+}
+
+/* Container zur Begrenzung der Textbreite */
+.container {
+    max-width: 700px; /* Ideale Breite für Fließtext */
+    margin: 0 auto;
+    background: #fff;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.05); /* Dezenter Schatten */
+}
+
+/* Typografie */
+h1 {
+    color: #111;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 40px;
+}
+
+p {
+    margin-bottom: 20px; /* Abstand zwischen den Absätzen */
+}
+
+h2 {
+    color: #222;
+    margin-top: 40px;
+}
+
+/* Zitat Stil */
+blockquote {
+    border-left: 4px solid #333;
+    margin: 30px 0;
+    padding-left: 20px;
+    font-style: italic;
+    color: #555;
+}
+
+/* Link Stil */
+a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive Anpassung für Handys */
+@media (max-width: 600px) {
+    .container {
+        padding: 20px;
+    }
+    body {
+        padding: 10px;
+    }
+}
