@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lernapp Werkstofftechnik</title>
+    <style>
+        :root {
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --primary: #4a90e2;
+            --green: #2ecc71;
+            --yellow: #f1c40f;
+            --red: #e74c3c;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        .app-container { width: 100%; max-width: 500px; background: var(--card-bg); padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); display: flex; flex-direction: column; height: 85vh; max-height: 700px; }
+        header { margin-bottom: 15px; }
+        h1 { font-size: 1.3rem; text-align: center; margin-bottom: 5px; color: #444; }
+        .progress-container { background: #eee; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; margin-bottom: 5px; }
+        .progress-bar { background: var(--primary); height: 100%; width: 0%; transition: width 0.3s ease; }
+        .stats { font-size: 0.85rem; text-align: center; color: #777; }
+        .card-area { flex: 1; display: flex; align-items: center; justify-content: center; margin: 15px 0; perspective: 1000px; cursor: pointer; }
+        .card { width: 100%; height: 100%; position: relative; transform-style: preserve-3d; transition: transform 0.6s; border: 2px solid #eef2f5; border-radius: 15px; background: #fff; }
+        .card.flipped { transform: rotateY(180deg); }
+        .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; overflow-y: auto; }
+        .card-back { transform: rotateY(180deg); background-color: #fafbfc; }
+        .category { font-size: 0.75rem; font-weight: bold; text-transform: uppercase; color: var(--primary); letter-spacing: 1px; margin-bottom: 10px; }
+        .question-text { font-size: 1.15rem; font-weight: 600; line-height: 1.4; }
+        .answer-text { font-size: 1.05rem; line-height: 1.5; color: #444; }
+        .hint { font-size: 0.8rem; color: #aaa; margin-top: 15px; }
+        .controls { display: flex; justify-content: space-between; gap: 10px; height: 60px; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        .controls.visible { opacity: 1; pointer-events: auto; }
+        .btn { flex: 1; border: none; border-radius: 12px; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.95); }
+        .btn-red { background-color: var(--red); }
+        .btn-yellow { background-color: var(--yellow); color: #333; }
+        .btn-green { background-color: var(--green); }
+        .end-screen { text-align: center; display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+        .end-screen h2 { color: var(--green); margin-bottom: 15px; }
+        .restart-btn { background: var(--primary); border: none; color: white; padding: 12px 25px; border-radius: 10px; font-weight: bold; margin-top: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header>
+        <h1>Werkstofftechnik Leitner-App</h1>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="stats" id="statsText">Gelernte Fragen: 0 / 0</div>
+    </header>
+
+    <div class="card-area" id="cardArea" onclick="flipCard()">
+        <div class="card" id="card">
+            <div class="card-front">
+                <div class="category" id="catFront">Kategorie</div>
+                <div class="question-text" id="qText">Frage wird geladen...</div>
+                <div class="hint">Tippen zum Aufdecken</div>
+            </div>
+            <div class="card-back">
+                <div class="category" id="catBack">Kategorie</div>
+                <div class="answer-text" id="aText">Antwort wird geladen...</div>
+                <div class="hint">Wie sicher fühlst du dich?</div>
+            </div>
+        </div>
+        <div class="end-screen" id="endScreen">
+            <h2>Hervorragend! 🎉</h2>
+            <p>Du hast alle Fragen erfolgreich gelernt und dich überall sicher gefühlt!</p>
+            <button class="restart-btn" onclick="restartApp()">Fortschritt zurücksetzen & Neu starten</button>
+        </div>
+    </div>
+
+    <div class="controls" id="controls">
+        <button class="btn btn-red" onclick="handleFeedback('red', event)">🔴 Unsicher</button>
+        <button class="btn btn-yellow" onclick="handleFeedback('yellow', event)">🟡 Neutral</button>
+        <button class="btn btn-green" onclick="handleFeedback('green', event)">🟢 Sicher</button>
+    </div>
+</div>
+
+<script>
+    const rawQuestions = [
+        // 27.03.2026
+        { cat: "27.03 — Grundlagen", q: "Was ist ein Werkstoff?", a: "Ein Festkörper (Material), der aufgrund seiner gezielten Eigenschaften zur Herstellung von Bauteilen, Werkzeugen oder Produkten verwendet wird." },
+        { cat: "27.03 — Grundlagen", q: "Welche Werkstoffhauptgruppen gibt es?", a: "Metalle, Polymere (Kunststoffe), Keramiken (inkl. Gläser) und Verbundwerkstoffe." },
+        { cat: "27.03 — Grundlagen", q: "Wie ist die Wechselwirkung zwischen WT – FT – KT?", a: "WT bestimmt die Eigenschaften, FT formt den Werkstoff/verändert das Gefüge, KT legt die Form fest und stellt Belastungsanforderungen. Sie beeinflussen sich gegenseitig im Kreis." },
+        { cat: "27.03 — Grundlagen", q: "Wie sind Metalle aufgebaut?", a: "Aus Atomen, die durch die Metallbindung zusammengehalten werden und sich geometrisch regelmäßig in einem Kristallgitter anordnen." },
+        { cat: "27.03 — Grundlagen", q: "Wie unterscheiden sich Glas und Keramik?", a: "Glas: Amorpher Aufbau, schmilzt über weiten Temperaturbereich.<br>Keramik: Kristalliner Aufbau, meist definiert spröde mit festem Schmelz-/Zersetzungspunkt." },
+        { cat: "27.03 — Grundlagen", q: "Wozu wird Werkstofftechnik gebraucht?", a: "Um Werkstoffverhalten unter Last zu verstehen, Versagen zu verhindern, optimale Fertigungsprozesse zu wählen und Werkstoffe gezielt auszuwählen." },
+        
+        // 10.04.2026
+        { cat: "10.04 — Kristallstrukturen", q: "Unterschied Realkristall und Idealkristall?", a: "Idealkristall: Fehlerfrei und unendlich ausgedehnt.<br>Realkristall: Besitzt immer Gitterbaufehler (Leerstellen, Versetzungen, Korngrenzen etc.)." },
+        { cat: "10.04 — Kristallstrukturen", q: "Welche Arten von Versetzungen gibt es im Metallgitter?", a: "Stufenversetzungen und Schraubenversetzungen (sowie Mischformen)." },
+        { cat: "10.04 — Kristallstrukturen", q: "Welche Arten von kubischen Gittertypen gibt es?", a: "Kubisch-primitiv (kp), Kubisch-raumzentriert (krz) und Kubisch-flächenzentriert (kfz)." },
+        { cat: "10.04 — Kristallstrukturen", q: "Welche Arten orthorhombischer Gittertypen gibt es?", a: "Orthorhombisch-primitiv, -basiszentriert, -raumzentriert und -flächenzentriert." },
+        { cat: "10.04 — Kristallstrukturen", q: "Durch welche Größen wird ein Metallgitter beschrieben?", a: "Durch die Gitterkonstanten (Achsenlängen a, b, c) und die Interaxialwinkel (&alpha;, &beta;, &gamma;)." },
+        { cat: "10.04 — Kristallstrukturen", q: "Wie heißen die Gitterlücken in Atomgittern?", a: "Tetraederlücken und Oktaederlücken." },
+        { cat: "10.04 — Kristallstrukturen", q: "Woraus setzt sich ein Gleitsystem zusammen?", a: "Aus einer Gleitebene und einer darin liegenden Gleitrichtung." },
+        { cat: "10.04 — Kristallstrukturen", q: "Nenne Metalle im krz-Gitter bei Raumtemperatur:", a: "Ferrit (&alpha;-Fe), Chrom (Cr), Wolfram (W), Molybdän (Mo), Vanadium (V)." },
+        { cat: "10.04 — Kristallstrukturen", q: "Nenne Metalle im kfz-Gitter bei Raumtemperatur:", a: "Aluminium (Al), Kupfer (Cu), Nickel (Ni), Blei (Pb), Gold (Au), Silber (Ag)." },
+
+        // 17.04.2026
+        { cat: "17.04 — Gitterstörungen", q: "Nenne Punkt-, linien-, flächen- und räumliche Gitterstörungen:", a: "0D (Punkt): Leerstellen, Zwischengitter-/Fremdatome.<br>1D (Linie): Stufen-/Schraubenversetzungen.<br>2D (Fläche): Korn-/Phasengrenzen, Stapelfehler.<br>3D (Raum): Poren, Einschluss-Partikel, Risse." },
+        { cat: "17.04 — Gitterstörungen", q: "Orientierung des Burgers-Vektors bei einer Stufenversetzung?", a: "Er steht senkrecht (90&deg;) zur Versetzungslinie." },
+        { cat: "17.04 — Gitterstörungen", q: "Unterschied Stufen- und Schraubenversetzung anhand des Burgersvektors:", a: "Stufenversetzung: Burgersvektor steht senkrecht zur Versetzungslinie.<br>Schraubenversetzung: Burgersvektor verläuft parallel zu ihr." },
+        { cat: "17.04 — Gitterstörungen", q: "Verlauf der Stärke des Spannungszustands um eine Versetzungslinie:", a: "Im Kern extrem hoch; fällt mit zunehmendem Radius r proportional zu 1/r ab." },
+        { cat: "17.04 — Gitterstörungen", q: "An welchen Stellen treten bei einem Mikroriss die Maximalspannungen auf?", a: "Direkt an der Rissspitze (aufgrund der Geometrie der Kerbwirkung)." },
+
+        // 24.04.2026
+        { cat: "24.04 — Verfestigung", q: "Wie heißen die Ebenen, in denen sich Versetzungen bewegen können?", a: "Gleitebenen." },
+        { cat: "24.04 — Verfestigung", q: "Wieso ist die Festigkeit amorpher Metalle außergewöhnlich hoch?", a: "Weil sie keine kristalline Fernordnung besitzen; daher existieren keine Versetzungen, die durch das Gitter wandern und plastische Verformung erleichtern könnten." },
+        { cat: "24.04 — Verfestigung", q: "Wieso ist die Festigkeit metallischer Whisker außergewöhnlich hoch?", a: "Weil sie nahezu perfekte Einkristalle sind, die fast vollständig frei von Versetzungen sind (Annäherung an die theoretische Trennfestigkeit)." },
+        { cat: "24.04 — Verfestigung", q: "Warum ist die experimentelle Schubspannung höher als die theoretische Peierlsspannung?", a: "Weil im Realkristall zusätzliche Hindernisse (Mischkristallatome, Korngrenzen, andere Versetzungen) die Bewegung blockieren und Kraft erfordern." },
+        { cat: "24.04 — Verfestigung", q: "Die vier Komponenten der Festigkeitserhöhung (Verfestigungsmechanismen):", a: "1. Mischkristallverfestigung<br>2. Kaltverfestigung / Versetzungsverfestigung<br>3. Korngrenzenverfestigung (Hall-Petch)<br>4. Ausscheidungsverfestigung" },
+        { cat: "24.04 — Verfestigung", q: "Welcher physikalische Mechanismus liegt den 4 Verfestigungen zugrunde?", a: "Alle beruhen auf dem gleichen Prinzip: Sie erschweren, blockieren oder behindern die freie Bewegung von Versetzungen im Gitter." },
+        { cat: "24.04 — Verfestigung", q: "Warum wird zwischen R_eH und R_eL unterschieden und wieso fällt die Spannung ab?", a: "Ursache: Versetzungen werden von einer 'Cottrell-Wolke' (Fremdatome) blockiert.<br>Abfall: Bei Erreichen von R_eH reißen sie sich schlagartig los; für die Weiterbewegung reicht weniger Spannung (R_eL)." },
+        { cat: "24.04 — Verfestigung", q: "Wieso erhöhen kleinere Körner die Festigkeit?", a: "Mehr Korngrenzenfläche pro Volumen. An Korngrenzen stauen sich Versetzungen auf, da sie dort ihre Richtung ändern müssen (Hall-Petch)." },
+        { cat: "24.04 — Verfestigung", q: "Verhältnis maximale Schubspannung zu Zugspannung bei einachsiger Zugbeanspruchung:", a: "Die maximale Schubspannung beträgt genau die Hälfte der axialen Zugspannung: &tau;<sub>max</sub> = &sigma; / 2 (Schmid'sches Gesetz)." },
+        { cat: "24.04 — Verfestigung", q: "In welchem Winkel steht die Ebene maximaler Schubspannungen zur Kraftangriffslinie?", a: "In einem Winkel von 45&deg;." },
+        { cat: "24.04 — Verfestigung", q: "Unterschied Gleitband und Gleitebene?", a: "Gleitebene: Mikroskopische Atomebene.<br>Gleitband: Makroskopisch sichtbares Bündel aus sehr vielen, eng beieinander liegenden Gleitebenen." },
+        { cat: "24.04 — Verfestigung", q: "Was versteht man unter Annihilation von Versetzungen?", a: "Das gegenseitige Auslöschen zweier aufeinandertreffender Versetzungen mit entgegengesetztem Vorzeichen." },
+        { cat: "24.04 — Verfestigung", q: "Wie überwindet eine Versetzung ein Teilchen und welche werden geschnitten/umgangen?", a: "Schneiden: Kleine, kohärente Teilchen werden glatt durchschnitten.<br>Umgang (Orowan): Große, inkohärente Teilchen werden umgangen; Versetzung hinterlässt einen Versetzungsring." },
+
+        // 08.05.2026
+        { cat: "08.05 — Gefüge & Wärme", q: "Verfahren des Ätzens und Auswirkung auf das Schliffbild:", a: "Komponentenätzung: Greift Korngrenzen stärker an; Vertiefungen streuen Licht -> erscheinen dunkel.<br>Kornflächenätzung: Färbt Körner je nach Orientierung unterschiedlich (Hell-Dunkel-Kontraste)." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Formmerkmale von Martensit:", a: "Nadeliges, nadelförmig-verzweigtes oder plattenförmiges Gefügebild ('Strohmatte')." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Prinzip der Entstehung von Martensit:", a: "Austenit (kfz) wird extrem schnell (über kritischer Abkühlgeschwindigkeit) abgeschreckt. Keine Zeit für Kohlenstoffdiffusion. Gitter klappt schlagartig in verzerrtes, tetragonales krz-Gitter um." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Mechanische Eigenschaften von Martensit:", a: "Extrem hohe Härte und Zugfestigkeit, jedoch sehr spröde und geringe Zähigkeit (hohe Rissanfälligkeit)." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Formmerkmale von Ferrit, Perlit und seine Bestandteile:", a: "Ferrit: Helle, polygonale Körner.<br>Perlit: Streifiges, lamellares Aussehen (Zebramuster).<br>Bestandteile Perlit: Ferrit (&alpha;-Fe) und Zementit (Fe3C)." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Mechanische Eigenschaften von Perlit:", a: "Gute Festigkeit bei mittlerer Härte und moderater Verformbarkeit (ausgewogenes Verhältnis)." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Fehlerarten beim Randschichthärten durch Kohlenstoffgehalt:", a: "Überkohlung: Zu viel C führt zu sprödem Restaustenit oder Korngrenzenzementit.<br>Entkohlung: C-Verlust führt zu mangelnder Härteannahme (weiche Randschicht)." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Auswirkung des C-Gehalts auf Ferrit und Perlit bei normalem Stahl:", a: "Je höher der Kohlenstoffgehalt (bis 0,8% C), desto geringer wird der helle Ferritanteil und desto höher der dunkle Perlitanteil." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Vorteile von Gewinderollen gegenüber Gewindeschneiden:", a: "Ununterbrochener Faserverlauf (höhere Festigkeit), Kaltverfestigung der Oberfläche, Druckeigenspannungen im Grund (Schwingfestigkeit), spanlos." },
+        { cat: "08.05 — Gefüge & Wärme", q: "Was macht das Ätzverfahren nach Fry sichtbar?", a: "Es macht plastisch verformte Bereiche (Kaltverformungszonen/Gleitlinien) durch Bindung von Stickstoff an Gitterfehlern sichtbar." },
+
+        // 29.05.2026
+        { cat: "29.05 — Prüfung & Schwingung", q: "Unterschied homogene und heterogene Gefüge:", a: "Homogen: Besteht aus nur einer einzigen Phase.<br>Heterogen: Besteht aus einem Gemisch von zwei oder mehr unterschiedlichen Phasen." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Optisches Erscheinungsbild eines 0,45 % C-Stahls:", a: "Gemischtes Gefüge aus ca. zur Hälfte hellen Flächen (Ferrit) und zur Hälfte dunklen, streifigen Bereichen (Perlit)." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Optisches Erscheinungsbild eines Härtegefüges mit Bainit und Martensit (0,45 % C):", a: "Sehr feines, nadeliges Mischgefüge. Hellere Nadeln sind Martensit, eingebettet in dunklere, buschigen/nadelförmigen Strukturen des Bainits." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Anwendungsfälle für Härteprüfung:", a: "Wareneingangskontrolle, Überprüfung von Wärmebehandlungen (Härtetiefe), zerstörungsfreie Bauteilprüfung, Qualitätsüberwachung." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Drei gängige Härteprüfverfahren:", a: "Vickers (HV), Rockwell (HRC/HRB) und Brinell (HBW)." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Werkstoffkennwerte aus dem Zugversuch:", a: "Elastizitätsmodul (E), Streckgrenze (R_e) bzw. Dehngrenze (R_p0,2), Zugfestigkeit (R_m), Bruchdehnung (A), Bruchinschnürung (Z)." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Was beschreibt der Elastizitätsmodul (E-Modul)?", a: "Die Steifigkeit eines Werkstoffs (Widerstand gegen elastische Verformung im Hooke'schen Bereich)." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Größenordnungen der E-Module (Al, Cu, Stahl):", a: "Alu: ca. 70 GPa | Kupfer/Messing: ca. 100-120 GPa | Stahl/Eisen: ca. 210 GPa." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Wieso wird Rp0,2 anstatt der Streckgrenze Re ermittelt?", a: "Weil viele Werkstoffe (Alu, kfz-Metalle) keine ausgeprägte, visuelle Streckgrenze besitzen. Rp0,2 definiert die Spannung bei 0,2% bleibender Verformung." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Zwei Anteile der Gesamtdehnung und Name vor Einschnürung:", a: "Elastische und plastische Dehnung. Der plastische Anteil vor der Einschnürung heißt Gleichmaßdehnung." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Die 4 Typen von Verfestigungskurven:", a: "1. Linear-elastisch ideal-plastisch<br>2. Linear-elastisch mit linearer Verfestigung<br>3. Linear-elastisch mit parabolischer Verfestigung<br>4. Starr-ideal-plastisch" },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Prozesstechnische Beeinflussung ohne Legieren:", a: "Thermisch (Glühen, Härten, Anlassen) und mechanisch (Kaltwalzen, Schmieden, Kugelstrahlen)." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Unterschied spröde und duktil im Diagramm:", a: "Spröde: Steiler elastischer Anstieg, bricht abrupt ohne nennenswerte plastische Verformung.<br>Duktil: Zeigt nach Elastizitätsgrenze weiten Bereich plastischer Verformung." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Für welche Beanspruchungsfälle sind Kennwerte des Zugversuchs relevant?", a: "Für statisch oder quasi-statisch belastete Bauteile zur Auslegung gegen Verformung (R_e) oder Bruch (R_m)." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Zwei Spannungskomponenten schwingender Belastung:", a: "Oberspannung (&sigma;_o) und Unterspannung (&sigma;_u) [bzw. Mittelspannung &sigma;_m und Ausschlagspannung &sigma;_a]." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Versuch zur Ermittlung der Dauerfestigkeit & Aufbau:", a: "Wöhlerversuch. Rotierende Probe unter definierter Last zyklisch beansprucht. Im Diagramm (Wöhlerlinie) wird Ausschlagspannung gegen log. Spielzahl N aufgetragen." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Welcher Sonderfall ist die Wechselfestigkeit &sigma;_w?", a: "Der Sonderfall, bei dem die Mittelspannung exakt Null ist (&sigma;_m = 0). Reine, symmetrische Schwingung." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Unterschied Wöhlerkurve Typ-I und Typ-II:", a: "Typ-I (ferritische Stähle): Knickt ab (N &approx; 10^6 - 10^7) in Waagerechte -> echte Dauerfestigkeit.<br>Typ-II (Alu, kfz): Fällt kontinuierlich ab -> nur Zeitfestigkeit." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Optische Merkmale eines Schwingbruchs:", a: "Glatter Dauerbruchbereich mit charakteristischen Rastlinien (Muschellinien) und ein rauer Restbruchbereich." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Welche zyklische Beanspruchung ist am versagenskritischsten?", a: "Die Zug-Druck-Beanspruchung, da der gesamte Querschnitt maximal gleichmäßig auf Zug belastet wird." },
+        { cat: "29.05 — Prüfung & Schwingung", q: "Prozesstechnische Optimierung der zyklischen Beanspruchbarkeit:", a: "Oberflächenhärten, mechanisches Verfestigen (Kugelstrahlen, Festwalzen) für Druckeigenspannungen, Polieren (Vermeidung von Kerben)." },
+
+        // 05.06.2026
+        { cat: "05.06 — Legierung & Eisen", q: "Was ist eine Phase?", a: "Ein räumlicher Bereich eines Stoffsystems, der chemisch und physikalisch völlig homogen ist und durch eine klare Grenzfläche getrennt ist." },
+        { cat: "05.06 — Legierung & Eisen", q: "Wie viele Phasen existieren bei einem erstarrten reinen Metall ohne Allotropie?", a: "Genau eine feste Phase." },
+        { cat: "05.06 — Legierung & Eisen", q: "Freiheitsgrade laut Gibb'scher Phasenregel für reines Metall fest:", a: "F = 1 - 1 + 1 = 1." },
+        { cat: "05.06 — Legierung & Eisen", q: "Welche physikalische Größe ist dieser eine Freiheitsgrad?", a: "Die Temperatur (kann verändert werden, ohne Phasenanzahl zu ändern)." },
+        { cat: "05.06 — Legierung & Eisen", q: "Definition Legierung:", a: "Ein metallischer Werkstoff aus mind. zwei Elementen (davon mind. ein Metall), die eine metallische Bindung eingehen." },
+        { cat: "05.06 — Legierung & Eisen", q: "Zustandsdiagramm eines 2-Komponentensystems (unbeschränkte Löslichkeit):", a: "X-Achse: Konzentration (0-100% B), Y-Achse: Temperatur. Oben: Schmelze (L), Unten: Mischkristall (&alpha;), Dazwischen: linsenförmiges Zweiphasengebiet (L+&alpha;), begrenzt durch Liquidus- und Soliduslinie." },
+        { cat: "05.06 — Legierung & Eisen", q: "Die zwei Werkstoffgruppen bei Eisen-Kohlenstoff-Legierungen:", a: "Stahl (C-Gehalt &le; 2,06%) und Gusseisen (C-Gehalt > 2,06%)." },
+        { cat: "05.06 — Legierung & Eisen", q: "Unterschiede Eigenschaften und C-Form dieser Gruppen:", a: "Stahl: Gut plastisch umformbar, C gelöst oder als Zementit gebunden.<br>Gusseisen: Spröde, hervorragend gießbar, C als elementarer Graphit oder massiver Zementit." },
+        { cat: "05.06 — Legierung & Eisen", q: "Warum kommt es bei der Austenitumwandlung zur Volumenänderung?", a: "Weil sich die Kristallstruktur ändert: Dicht gepackter Austenit (kfz, 74%) wandelt sich in weniger dichten Ferrit (krz, 68%) um. Gitter dehnt sich beim Abkühlen aus." },
+        { cat: "05.06 — Legierung & Eisen", q: "Einfluss des C-Gehalts auf Schmelzpunkt und Austenitgebiet:", a: "Mehr C senkt den Schmelzpunkt (bis Eutektikum bei 1147&deg;C). Das Austenitgebiet wird zu niedrigeren Temperaturen hin erweitert (bis 727&deg;C)." },
+        { cat: "05.06 — Legierung & Eisen", q: "Drei gängige Verfahren der Wärmebehandlung:", a: "Normalglühen, Härten, Rekristallisationsglühen (oder Vergüten)." },
+        { cat: "05.06 — Legierung & Eisen", q: "Was versteht man unter dem Vergüten von Stahl?", a: "Kombinierte Wärmebehandlung aus Härten (Abkühlen zu Martensit) mit anschließendem Anlassen auf hohe Temperaturen (> 500&deg;C) für optimale Festigkeit + Zähigkeit." }
+    ];
+
+    let activeQueue = [];
+    let totalUniqueQuestions = rawQuestions.length;
+    let learnedCount = 0;
+    let isFlipped = false;
+
+    function shuffle(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function loadProgress() {
+        try {
+            const savedQueue = localStorage.getItem('wt_activeQueue');
+            const savedCount = localStorage.getItem('wt_learnedCount');
+
+            // HIER IST DIE KORREKTUR: Prüft gründlich, ob der Speicher leer ist
+            if (savedQueue && savedQueue !== "[]" && savedCount !== null) {
+                activeQueue = JSON.parse(savedQueue);
+                learnedCount = parseInt(savedCount, 10);
+            } else {
+                createNewSession();
+            }
+        } catch (e) {
+            createNewSession();
+        }
+    }
+
+    function createNewSession() {
+        activeQueue = [...rawQuestions];
+        shuffle(activeQueue);
+        learnedCount = 0;
+        saveProgress();
+    }
+
+    function saveProgress() {
+        localStorage.setItem('wt_activeQueue', JSON.stringify(activeQueue));
+        localStorage.setItem('wt_learnedCount', learnedCount.toString());
+    }
+
+    function initApp() {
+        loadProgress();
+        updateProgress();
+        showCard();
+    }
+
+    function showCard() {
+        if (activeQueue.length === 0) {
+            document.getElementById('card').style.display = 'none';
+            document.getElementById('controls').classList.remove('visible');
+            document.getElementById('endScreen').style.display = 'flex';
+            return;
+        }
+
+        document.getElementById('card').style.display = 'block';
+        document.getElementById('endScreen').style.display = 'none';
+        
+        isFlipped = false;
+        document.getElementById('card').classList.remove('flipped');
+        document.getElementById('controls').classList.remove('visible');
+
+        const currentQ = activeQueue[0];
+        document.getElementById('catFront').innerText = currentQ.cat;
+        document.getElementById('catBack').innerText = currentQ.cat;
+        document.getElementById('qText').innerHTML = currentQ.q;
+        document.getElementById('aText').innerHTML = currentQ.a;
+    }
+
+    function flipCard() {
+        if (isFlipped) return;
+        isFlipped = true;
+        document.getElementById('card').classList.add('flipped');
+        document.getElementById('controls').classList.add('visible');
+    }
+
+    function handleFeedback(status, event) {
+        if(event) event.stopPropagation();
+        
+        if (activeQueue.length === 0) return;
+        const finishedCard = activeQueue.shift();
+
+        if (status === 'red') {
+            activeQueue.push(finishedCard);
+        } else if (status === 'yellow') {
+            const insertIndex = Math.floor(activeQueue.length / 2) + 1;
+            activeQueue.splice(insertIndex, 0, finishedCard);
+        } else if (status === 'green') {
+            learnedCount++;
+        }
+
+        saveProgress();
+        updateProgress();
+        showCard();
+    }
+
+    function updateProgress() {
+        const percentage = totalUniqueQuestions > 0 ? (learnedCount / totalUniqueQuestions) * 100 : 0;
+        document.getElementById('progressBar').style.width = percentage + '%';
+        document.getElementById('statsText').innerText = `Gelernte Fragen: ${learnedCount} / ${totalUniqueQuestions} (Noch in Runde: ${activeQueue.length})`;
+    }
+
+    function restartApp() {
+        localStorage.removeItem('wt_activeQueue');
+        localStorage.removeItem('wt_learnedCount');
+        createNewSession();
+        updateProgress();
+        showCard();
+    }
+
+    window.onload = initApp;
+</script>
+
+</body>
+</html>
